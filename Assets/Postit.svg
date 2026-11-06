@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="base" x2="0.8" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#354163"/>
+      <stop offset="1" stop-color="#181d35"/>
+    </linearGradient>
+    <linearGradient id="paper" x2="0.8" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#fff3a3"/>
+      <stop offset="1" stop-color="#ffd052"/>
+    </linearGradient>
+    <linearGradient id="fold" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#fff7c8"/>
+      <stop offset="1" stop-color="#efa62d"/>
+    </linearGradient>
+  </defs>
+  <rect x="78" y="95" width="868" height="868" rx="195" fill="#111528" opacity=".35"/>
+  <rect x="78" y="78" width="868" height="868" rx="195" fill="url(#base)"/>
+  <rect x="81" y="81" width="862" height="862" rx="192" fill="none" stroke="#fff" stroke-opacity=".13" stroke-width="6"/>
+  <g transform="rotate(9 512 520)">
+    <rect x="296" y="305" width="489" height="484" rx="53" fill="#111528" opacity=".32"/>
+    <rect x="285" y="286" width="489" height="484" rx="53" fill="#f39065"/>
+  </g>
+  <g transform="rotate(-10 500 500)">
+    <path d="M292 241H699Q750 241 750 292V598L619 729H292Q241 729 241 678V292Q241 241 292 241Z" fill="#151827" opacity=".27" transform="translate(8 14)"/>
+    <path d="M292 241H699Q750 241 750 292V598L619 729H292Q241 729 241 678V292Q241 241 292 241Z" fill="url(#paper)"/>
+    <path d="M619 729V644Q619 598 665 598H750Z" fill="url(#fold)"/>
+    <path d="M337 455L366 484L417 428M469 454H648M337 562H562" fill="none" stroke="#553923" stroke-width="29" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <path d="M780 172Q788 224 839 232Q788 240 780 292Q772 240 721 232Q772 224 780 172Z" fill="#fff0ad"/>
+</svg>
