@@ -40,6 +40,7 @@ struct Note: Identifiable, Codable {
 final class Notes: ObservableObject {
     @Published private(set) var items: [Note]
     @Published var saveError: String?
+    @Published private(set) var background: NoteBackground = .standard
     private let file: URL
     private var canSave = true
 
@@ -55,6 +56,13 @@ final class Notes: ObservableObject {
         } catch {
             canSave = false
             saveError = "Failed to read saved notes.\n\(error.localizedDescription)"
+        }
+        if let data = UserDefaults.standard.data(forKey: "sharedNoteBackground"),
+           let saved = try? JSONDecoder().decode(NoteBackground.self, from: data) {
+            background = saved
+        } else {
+            // Keep the first existing custom background until a shared setting is saved.
+            background = items.compactMap(\.background).first ?? .standard
         }
     }
 
@@ -78,10 +86,10 @@ final class Notes: ObservableObject {
         save()
     }
 
-    func update(_ id: UUID, background: NoteBackground) {
-        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
-        items[index].background = background
-        save()
+    func updateBackground(_ value: NoteBackground) {
+        guard let data = try? JSONEncoder().encode(value) else { return }
+        UserDefaults.standard.set(data, forKey: "sharedNoteBackground")
+        background = value
     }
 
     func save() {
@@ -158,8 +166,8 @@ struct PostitView: View {
                     }
                     .padding()
                 }
-                if let id = selection, let note = notes.items.first(where: { $0.id == id }) {
-                    let background = note.background ?? .standard
+                if let id = selection, notes.items.contains(where: { $0.id == id }) {
+                    let background = notes.background
                     TextEditor(text: Binding(
                         get: { notes.items.first { $0.id == id }?.text ?? "" },
                         set: { notes.update(id, text: $0) }
@@ -186,16 +194,16 @@ struct PostitView: View {
         .onAppear { selection = selection ?? notes.items.first?.id }
         .toolbar {
             ToolbarItemGroup {
-                if let id = selection {
+                Group {
                     Button { showingBackground.toggle() } label: {
                         HStack(spacing: 5) {
                             Image(systemName: "paintpalette")
-                            Text("背景")
+                            Text("Background")
                         }
                     }
-                    .help("背景色と透け具合を設定")
+                    .help("Change background color and transparency")
                     .popover(isPresented: $showingBackground) {
-                        backgroundSettings(for: id)
+                        backgroundSettings()
                     }
                     .disabled(!notes.isEditable)
                 }
@@ -231,57 +239,57 @@ struct PostitView: View {
         }
     }
 
-    private func backgroundSettings(for id: UUID) -> some View {
-        let background = notes.items.first { $0.id == id }?.background ?? .standard
+    private func backgroundSettings() -> some View {
+        let background = notes.background
         return VStack(alignment: .leading, spacing: 16) {
-            Text("背景の設定").font(.headline)
-            ColorPicker("背景色", selection: Binding(
+            Text("Background Settings").font(.headline)
+            ColorPicker("Background Color", selection: Binding(
                 get: {
-                    let value = notes.items.first { $0.id == id }?.background ?? .standard
+                    let value = notes.background
                     return Color(.sRGB, red: value.red, green: value.green, blue: value.blue, opacity: 1)
                 },
                 set: { color in
                     guard let rgb = NSColor(color).usingColorSpace(.sRGB) else { return }
-                    var value = notes.items.first { $0.id == id }?.background ?? .standard
+                    var value = notes.background
                     value.red = rgb.redComponent
                     value.green = rgb.greenComponent
                     value.blue = rgb.blueComponent
-                    notes.update(id, background: value)
+                    notes.updateBackground(value)
                 }
             ), supportsOpacity: false)
             Divider()
-            Toggle("背後のウィンドウを透かす", isOn: $transparentBackground)
+            Toggle("Transparent Background", isOn: $transparentBackground)
                 .toggleStyle(.switch)
-            Text("文字はくっきり表示したまま、本文の背景だけを透過します。設定はすべての付箋に共通です。")
+            Text("Show windows behind the note while keeping text clear. This switch applies to all notes.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 8) {
                 HStack {
-                    Text("透け具合")
+                    Text("Transparency")
                     Spacer()
                     Text("\(Int(((1 - background.opacity) * 100).rounded()))%")
                         .monospacedDigit()
                 }
                 Slider(value: Binding(
-                    get: { 1 - (notes.items.first { $0.id == id }?.background ?? .standard).opacity },
+                    get: { 1 - (notes.background).opacity },
                     set: { transparency in
-                        var value = notes.items.first { $0.id == id }?.background ?? .standard
+                        var value = notes.background
                         value.opacity = 1 - transparency
-                        notes.update(id, background: value)
+                        notes.updateBackground(value)
                     }
                 ), in: 0...1)
-                .accessibilityLabel("透け具合")
+                .accessibilityLabel("Transparency")
                 HStack {
-                    Text("透けない")
+                    Text("Opaque")
                     Spacer()
-                    Text("透明")
+                    Text("Transparent")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             .disabled(!transparentBackground)
-            Text(transparentBackground ? "透け具合は付箋ごとに保存されます。" : "透過をオンにすると、透け具合を調整できます。")
+            Text(transparentBackground ? "Background settings are saved and apply to all existing and new notes." : "Enable Transparent Background to adjust transparency.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -362,7 +370,7 @@ struct PostitApp: App {
     @NSApplicationDelegateAdaptor(PostitDelegate.self) private var delegate
 
     var body: some Scene {
-        Window("付箋", id: "postit") {
+        Window("Postit", id: "postit") {
             PostitWindow(notes: notes, delegate: delegate)
         }
         .defaultSize(width: 620, height: 400)

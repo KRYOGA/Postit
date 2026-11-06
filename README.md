@@ -1,28 +1,28 @@
 # Postit
 
-SwiftUI で作った、macOS 用のシンプルな付箋アプリです。メモを自動保存し、グローバルショートカットですぐに呼び出せます。
+A simple macOS sticky note app built with SwiftUI. Notes are saved automatically, and a global keyboard shortcut brings the app back into view.
 
-## 主な機能
+## Features
 
-- 付箋の追加・編集・削除（削除時は確認ダイアログを表示）
-- サイドバーで付箋を切り替え（最初の空でない行をタイトルとして表示）
-- 付箋ごとの背景色・不透明度の変更
-- 背景色に応じた文字色の自動調整
-- 編集内容のローカル自動保存
-- グローバルショートカットでウィンドウを表示
+- Create, edit, and delete notes, with confirmation before deletion
+- Switch between notes in the sidebar; the first non-empty line becomes the title
+- Customize background color and transparency across all notes
+- Automatically adjust text color based on the background
+- Save changes locally as you type
+- Show the app window with a global keyboard shortcut
 
-## 動作・ビルド環境
+## Requirements
 
-- macOS 13 Ventura 以降
-- Swift コンパイラを含む Xcode Command Line Tools
+- macOS 13 Ventura or later
+- Xcode Command Line Tools, including the Swift compiler
 
-Command Line Tools が未インストールの場合は、次のコマンドでインストールできます。
+If Command Line Tools are not installed, run:
 
 ```bash
 xcode-select --install
 ```
 
-## ビルドと起動
+## Build and Run
 
 ```bash
 git clone https://github.com/KRYOGA/Postit.git
@@ -31,32 +31,37 @@ cd Postit
 open Postit.app
 ```
 
-ビルドすると、プロジェクト直下に `Postit.app` が生成されます。必要に応じてアプリケーションフォルダへ移動してください。
+The build script creates `Postit.app` in the project directory. You can move it to your Applications folder if desired.
 
-## 使い方
+## Usage
 
-1. ツールバーの「＋」で付箋を追加します。
-2. サイドバーで付箋を選び、本文を編集します。変更は自動保存されます。
-3. ツールバーの「背景」から背景色と透過を設定できます。
-4. ごみ箱ボタンで選択中の付箋を削除できます。
+1. Click **+** in the toolbar to add a note.
+2. Select a note in the sidebar and edit its text. Changes are saved automatically.
+3. Click **Background** in the toolbar to customize the background color and transparency.
+4. Click the trash button to delete the selected note.
 
-「背景」パネルで「背後のウィンドウを透かす」をオンにして、「透け具合」を調整してください。0% は透けず、100% は背景色が透明になります。文字や操作ボタン自体は薄くなりません。透過のオン・オフは全付箋共通で、透け具合は付箋ごとに保存されます。
+In the **Background** panel, enable **Transparent Background** and adjust **Transparency** to reveal the desktop or windows behind the note. At 0%, the background is opaque; at 100%, the background color is fully transparent. Text and controls remain fully opaque.
 
-| ショートカット | 操作 |
+Background color, transparency, and the transparency switch apply to all existing and new notes. Settings are preserved across app restarts.
+
+| Shortcut | Action |
 | --- | --- |
-| `⌘N` | 付箋を追加 |
-| `⌃⌥⌘P`（Control + Option + Command + P） | 起動中のアプリのウィンドウを表示 |
+| `⌘N` | Add a note |
+| `⌃⌥⌘P` (Control + Option + Command + P) | Show the window while the app is running |
+| `⌘Q` | Quit the app |
 
-ウィンドウを閉じてもアプリは終了しません。終了するには `⌘Q` を使用してください。グローバルショートカットが他のアプリと競合する場合は、そちらの設定を変更してから Postit を起動し直してください。
+Closing the window does not quit the app. If the global shortcut conflicts with another app, change that app's shortcut and restart Postit.
 
-## データの保存先
+## Data Storage
 
-付箋の本文と背景色は、次のファイルに JSON 形式で保存されます。
+Notes are stored locally as JSON in:
 
 ```text
 ~/Library/Application Support/Postit/notes.json
 ```
 
-外部サーバーへの送信機能はありません。保存ファイルは暗号化されないため、扱う内容には注意してください。バックアップする場合は、アプリを終了してからこのファイルをコピーしてください。
+Shared background settings are stored in macOS app preferences (`UserDefaults`).
 
-保存データはリポジトリの外にあり、生成される `Postit.app` も `.gitignore` で除外されています。
+The app does not send data to external servers. Note files are not encrypted. To back up your notes, quit the app and copy `notes.json`; background preferences are stored separately.
+
+Saved notes are outside the repository, and the generated `Postit.app` is excluded by `.gitignore`.
