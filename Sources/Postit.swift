@@ -33,7 +33,7 @@ struct Note: Identifiable, Codable {
     var title: String {
         text.split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }
-            .first { !$0.isEmpty } ?? "無題の付箋"
+            .first { !$0.isEmpty } ?? "Empty Note"
     }
 }
 
@@ -54,7 +54,7 @@ final class Notes: ObservableObject {
             items = [Note()]
         } catch {
             canSave = false
-            saveError = "保存済みの付箋を読み込めませんでした。\n\(error.localizedDescription)"
+            saveError = "Failed to read saved notes.\n\(error.localizedDescription)"
         }
     }
 
@@ -92,7 +92,7 @@ final class Notes: ObservableObject {
             try JSONEncoder().encode(items).write(to: file, options: .atomic)
             saveError = nil
         } catch {
-            saveError = "付箋を保存できませんでした。\n\(error.localizedDescription)"
+            saveError = "Failed to save notes.\n\(error.localizedDescription)"
         }
     }
 }
@@ -120,7 +120,7 @@ struct PostitView: View {
                     HStack {
                         Text(error).font(.callout)
                         if notes.isEditable {
-                            Button("再試行") { notes.save() }
+                            Button("Retry") { notes.save() }
                         }
                     }
                     .padding()
@@ -140,7 +140,7 @@ struct PostitView: View {
                     .focused($editing)
                     .id(id)
                 } else {
-                    Text(notes.isEditable ? "付箋を選択するか、＋で追加してください" : "付箋を開けません")
+                    Text(notes.isEditable ? "Select a note or press + to add one" : "Cannot open note")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -164,15 +164,34 @@ struct PostitView: View {
                         }
                     ), supportsOpacity: true)
                     .labelsHidden()
-                    .help("背景色と不透明度を変更")
+                    .help("Change background color and opacity")
                     .id(id)
+
+                    HStack(spacing: 6) {
+                        Text("Opacity")
+                        Slider(value: Binding(
+                            get: { (notes.items.first { $0.id == id }?.background ?? .standard).opacity },
+                            set: { opacity in
+                                var background = notes.items.first { $0.id == id }?.background ?? .standard
+                                background.opacity = opacity
+                                notes.update(id, background: background)
+                            }
+                        ), in: 0...1)
+                        .frame(width: 80)
+                        .accessibilityLabel("Background opacity")
+                        Text("\(Int(((notes.items.first { $0.id == id }?.background ?? .standard).opacity * 100).rounded()))%")
+                            .monospacedDigit()
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                    .help("Change background opacity")
+                    .disabled(!notes.isEditable)
                 }
 
                 Button {
                     selection = notes.add()
                     editing = true
                 } label: {
-                    Label("付箋を追加", systemImage: "plus")
+                    Label("Add Note", systemImage: "plus")
                 }
                 .keyboardShortcut("n")
                 .disabled(!notes.isEditable)
@@ -180,17 +199,17 @@ struct PostitView: View {
                 Button {
                     pendingDelete = selection
                 } label: {
-                    Label("付箋を削除", systemImage: "trash")
+                    Label("Delete Note", systemImage: "trash")
                 }
                 .disabled(selection == nil || !notes.isEditable)
             }
         }
-        .alert("この付箋を削除しますか？", isPresented: Binding(
+        .alert("Delete this note?", isPresented: Binding(
             get: { pendingDelete != nil },
             set: { if !$0 { pendingDelete = nil } }
         )) {
-            Button("キャンセル", role: .cancel) { pendingDelete = nil }
-            Button("削除", role: .destructive) {
+            Button("Cancel", role: .cancel) { pendingDelete = nil }
+            Button("Delete", role: .destructive) {
                 guard let id = pendingDelete else { return }
                 notes.remove(id)
                 selection = notes.items.first?.id
@@ -233,8 +252,8 @@ final class PostitDelegate: NSObject, NSApplicationDelegate {
         }
 
         let alert = NSAlert()
-        alert.messageText = "付箋のショートカットを登録できませんでした"
-        alert.informativeText = "⌃⌥⌘P が別のアプリで使われている場合は、そちらの設定を変更してから付箋を起動し直してください。"
+        alert.messageText = "Failed to register note shortcut"
+        alert.informativeText = "If ⌃⌥⌘P is being used by another application, please change its setting and restart the app."
         alert.runModal()
     }
 
