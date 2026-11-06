@@ -97,10 +97,43 @@ final class Notes: ObservableObject {
     }
 }
 
+// Configure only the containing window; keep text and controls fully opaque.
+struct WindowBackground: NSViewRepresentable {
+    var transparent: Bool
+
+    final class WindowView: NSView {
+        var transparent = false
+
+        func apply() {
+            guard let window else { return }
+            window.isOpaque = !transparent
+            window.backgroundColor = transparent ? .clear : .windowBackgroundColor
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            apply()
+        }
+    }
+
+    func makeNSView(context: Context) -> WindowView {
+        let view = WindowView()
+        view.transparent = transparent
+        return view
+    }
+
+    func updateNSView(_ view: WindowView, context: Context) {
+        view.transparent = transparent
+        view.apply()
+    }
+}
+
 struct PostitView: View {
+    @AppStorage("transparentBackground") private var transparentBackground = false
     @ObservedObject var notes: Notes
     @State private var selection: UUID?
     @State private var pendingDelete: UUID?
+    @State private var showingBackground = false
     @FocusState private var editing: Bool
 
     var body: some View {
@@ -135,8 +168,10 @@ struct PostitView: View {
                     .scrollContentBackground(.hidden)
                     .foregroundStyle(background.textColor)
                     .preferredColorScheme(.light)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(14)
-                    .background(background.color)
+                    .background(Color(.sRGB, red: background.red, green: background.green,
+                                      blue: background.blue, opacity: transparentBackground ? background.opacity : 1))
                     .focused($editing)
                     .id(id)
                 } else {
@@ -147,43 +182,21 @@ struct PostitView: View {
             }
         }
         .frame(minWidth: 480, minHeight: 300)
+        .background(WindowBackground(transparent: transparentBackground))
         .onAppear { selection = selection ?? notes.items.first?.id }
         .toolbar {
             ToolbarItemGroup {
                 if let id = selection {
-                    ColorPicker("背景色", selection: Binding(
-                        get: { (notes.items.first { $0.id == id }?.background ?? .standard).color },
-                        set: { color in
-                            guard let rgb = NSColor(color).usingColorSpace(.sRGB) else { return }
-                            notes.update(id, background: NoteBackground(
-                                red: rgb.redComponent,
-                                green: rgb.greenComponent,
-                                blue: rgb.blueComponent,
-                                opacity: rgb.alphaComponent
-                            ))
+                    Button { showingBackground.toggle() } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "paintpalette")
+                            Text("背景")
                         }
-                    ), supportsOpacity: true)
-                    .labelsHidden()
-                    .help("Change background color and opacity")
-                    .id(id)
-
-                    HStack(spacing: 6) {
-                        Text("Opacity")
-                        Slider(value: Binding(
-                            get: { (notes.items.first { $0.id == id }?.background ?? .standard).opacity },
-                            set: { opacity in
-                                var background = notes.items.first { $0.id == id }?.background ?? .standard
-                                background.opacity = opacity
-                                notes.update(id, background: background)
-                            }
-                        ), in: 0...1)
-                        .frame(width: 80)
-                        .accessibilityLabel("Background opacity")
-                        Text("\(Int(((notes.items.first { $0.id == id }?.background ?? .standard).opacity * 100).rounded()))%")
-                            .monospacedDigit()
-                            .frame(width: 40, alignment: .trailing)
                     }
-                    .help("Change background opacity")
+                    .help("背景色と透け具合を設定")
+                    .popover(isPresented: $showingBackground) {
+                        backgroundSettings(for: id)
+                    }
                     .disabled(!notes.isEditable)
                 }
 
@@ -217,6 +230,65 @@ struct PostitView: View {
             }
         }
     }
+
+    private func backgroundSettings(for id: UUID) -> some View {
+        let background = notes.items.first { $0.id == id }?.background ?? .standard
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("背景の設定").font(.headline)
+            ColorPicker("背景色", selection: Binding(
+                get: {
+                    let value = notes.items.first { $0.id == id }?.background ?? .standard
+                    return Color(.sRGB, red: value.red, green: value.green, blue: value.blue, opacity: 1)
+                },
+                set: { color in
+                    guard let rgb = NSColor(color).usingColorSpace(.sRGB) else { return }
+                    var value = notes.items.first { $0.id == id }?.background ?? .standard
+                    value.red = rgb.redComponent
+                    value.green = rgb.greenComponent
+                    value.blue = rgb.blueComponent
+                    notes.update(id, background: value)
+                }
+            ), supportsOpacity: false)
+            Divider()
+            Toggle("背後のウィンドウを透かす", isOn: $transparentBackground)
+                .toggleStyle(.switch)
+            Text("文字はくっきり表示したまま、本文の背景だけを透過します。設定はすべての付箋に共通です。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 8) {
+                HStack {
+                    Text("透け具合")
+                    Spacer()
+                    Text("\(Int(((1 - background.opacity) * 100).rounded()))%")
+                        .monospacedDigit()
+                }
+                Slider(value: Binding(
+                    get: { 1 - (notes.items.first { $0.id == id }?.background ?? .standard).opacity },
+                    set: { transparency in
+                        var value = notes.items.first { $0.id == id }?.background ?? .standard
+                        value.opacity = 1 - transparency
+                        notes.update(id, background: value)
+                    }
+                ), in: 0...1)
+                .accessibilityLabel("透け具合")
+                HStack {
+                    Text("透けない")
+                    Spacer()
+                    Text("透明")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .disabled(!transparentBackground)
+            Text(transparentBackground ? "透け具合は付箋ごとに保存されます。" : "透過をオンにすると、透け具合を調整できます。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(20)
+        .frame(width: 300)
+    }
+
 }
 
 final class PostitDelegate: NSObject, NSApplicationDelegate {
